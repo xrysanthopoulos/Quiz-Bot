@@ -1,0 +1,24 @@
+{
+  "name": "Trivia",
+  "version": "1.0.0",
+  "description": "Trivia game",
+  "main": "server.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xrysanthopoulos/HOme.git"
+  },
+  "keywords": [],
+  "author": "Dimitris Xrysanthopoulos",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "mongodb": "^3.3.5",
+    "request": "^2.88.0"
+  },
+  "homepage": "https://github.com/xrysanthopoulos/Trivia#readme"
+}
