@@ -1,4 +1,4 @@
-# QBot
+# Quiz Bot
 This is a trivia game on Facebook Messenger.
 
 # Technology
@@ -11,7 +11,7 @@ Use open-source technologies is written in:
 
 ###### When you use our services, you’re trusting us with your information. 
 
-Built the QBot app as a Free app. This SERVICE is provided by at no cost and is intended for use as is.
+Built the Quiz Bot app as a Free app. This SERVICE is provided by at no cost and is intended for use as is.
 
 This page is used to inform visitors regarding my policies with the collection, use, and disclosure of Personal Information if anyone decided to use my Service.
 
