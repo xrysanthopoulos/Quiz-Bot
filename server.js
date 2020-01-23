@@ -24,7 +24,7 @@ async function setupPersistentMenu(res) {
     {
         "persistent_menu": [{
             "locale": "default",
-            "composer_input_disabled": false,
+            "composer_input_disabled": true,
             "call_to_actions": [
                 {
                     "title": 'Νέο παιχνίδι 🎮',
