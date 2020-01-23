@@ -19,7 +19,7 @@ app.get('/setup', function (req, res) {
     setupGreetingText(res);
 });
 
-function setupPersistentMenu(res) {
+async function setupPersistentMenu(res) {
     var messageData =
     {
         "persistent_menu": [{
@@ -41,7 +41,7 @@ function setupPersistentMenu(res) {
         ]
     };
     // Start the request
-    request({
+    await request({
         url: "https://graph.facebook.com/v2.6/me/messenger_profile?access_token=" + PAGE_ACCESS_TOKEN,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -757,5 +757,5 @@ async function callSendAPI(sender_psid, response) {
 }
 
 app.listen(app.get("port"), () => {
-    // console.log(`Find the server at: http://localhost:${app.get("port")}/`); // eslint-disable-line no-console
+    console.log(`Find the server at: http://localhost:${app.get("port")}/`); // eslint-disable-line no-console
 });
