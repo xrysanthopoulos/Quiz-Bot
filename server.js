@@ -145,7 +145,7 @@ async function getQuestionsForDB(psid) {
                 dataQuest = await col.find().limit(1).skip(r).toArray();
             } else {
                 if (dataUser.difficult === "random") {
-                    query = { category: dataUser.category }
+                    query = { difficulty: dataUser.difficult }
                 } else if (dataUser.category === "random") {
                     query = { category: dataUser.category }
                 } else {
