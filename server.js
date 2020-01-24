@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const request = require('request');
+const axios = require('axios');
 const MongoClient = require('mongodb').MongoClient;
 
 const PAGE_ACCESS_TOKEN = process.env.PAGE_ACCESS_TOKEN;
@@ -9,14 +10,17 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME;
 
+const roundCount = 10;
+const points = 5;
+
 const app = express().use(bodyParser.json());
 
 app.set("port", PORT || 8000);
 
-app.get('/setup', function (req, res) {
-    setupGetStartedButton(res);
-    setupPersistentMenu(res);
-    setupGreetingText(res);
+app.get('/setup', async function (req, res) {
+    await setupGetStartedButton(res);
+    await setupPersistentMenu(res);
+    await setupGreetingText(res);
 });
 
 async function setupPersistentMenu(res) {
@@ -32,9 +36,14 @@ async function setupPersistentMenu(res) {
                     "payload": "start"
                 },
                 {
-                    "type": "web_url",
+                    "type": "postback",
                     "title": "Βγές άπο το παιχνίδι ❌",
                     "payload": "cancel"
+                },
+                {
+                    "type": "postback",
+                    "title": "Γενική βαθμολογία και score 🏆",
+                    "payload": "score"
                 }
             ]
         }
@@ -65,7 +74,7 @@ async function setupGreetingText(res) {
         "greeting": [
             {
                 "locale": "default",
-                "text": "Hello {{user_full_name}} 👋 !! This is a Trivia Game. Press 'Get Started' to start the game."
+                "text": "Hello {{user_full_name}} 👋 !! This is the Quiz Bot a trivia game. Press 'Get Started' to start the game."
             }
         ]
     };
@@ -212,8 +221,19 @@ async function addNewUserDB(psid) {
         const db = client.db(DB_NAME);
         const col = db.collection('users');
 
+        const getPersonDetails = async () => {
+                return axios.get("https://graph.facebook.com/"+psid+"?fields=first_name,last_name,profile_pic&access_token="+PAGE_ACCESS_TOKEN)
+                .then((response) => {
+                  return response.data;
+                })
+                .catch((error) => {
+                  console.log(error);
+                });
+        }
+        let data = await getPersonDetails()
+
         let userFind = { user: psid };
-        let user = { user: psid, difficult: null, category: null, points: 0, score: 0, roundCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null };
+        let user = { user: psid, personalDetails: [data], difficult: null, category: null, points: 0, score: 0, roundCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null };
 
         data = await col.findOne(userFind).then(result => {
             if (result === null || result === undefined) {
@@ -282,31 +302,6 @@ async function updateUserDetailsDB(psid, payload) {
     client.close();
 }
 
-async function getUserScoreDB(psid) {
-    const client = new MongoClient(MONGODB_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true
-    });
-
-    try {
-        await client.connect();
-        // console.log("Connected correctly to server");
-        const db = client.db(DB_NAME);
-        const col = db.collection('users');
-
-        let userFind = { user: psid };
-
-        data = await col.findOne(userFind).then(result => {
-            return result.score
-        })
-
-        return data
-    } catch (err) {
-        console.log(err.stack);
-    }
-    client.close();
-}
-
 async function updateUserScoreDB(psid) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -321,7 +316,7 @@ async function updateUserScoreDB(psid) {
         let userFind = { user: psid };
 
         let data = await col.findOne(userFind);
-        let updateValues = { $set: { score: data.score + 1 } };
+        let updateValues = { $set: { score: data.score + 1, points: data.points + points } };
 
         await col.findOneAndUpdate(userFind, updateValues);
 
@@ -413,11 +408,38 @@ app.post('/webhook', (req, res) => {
 
 const wellcomeGetStart = () => {
     const msg = {
+        "text": `Γεια 👋\nΤο Quiz bot είναι ένα trivial game, δοκίμασε τις γνώσεις σου σε διαφορετικές κατηγορίες και επίδεδο δυσκολίας και με κάθε σώστη απάντηση και αύξησε τη βαθμολογία σου.`
+    }
+    return msg
+}
+
+// const wellcomeGetStart = () => {
+//     const msg = {
+//         "attachment": {
+//             "type": "template",
+//             "payload": {
+//                 "template_type": "button",
+//                 "text": `Γεια 👋\nΤο Quiz bot είναι ένα trivial game, δοκίμασε τις γνώσεις σου σε διαφορετικές κατηγορίες και επίδεδο δυσκολίας και με κάθε σώστη απάντηση και αύξησε τη βαθμολογία σου.`,
+//                 "buttons": [
+//                     {
+//                         "type": "postback",
+//                         "payload": "start",
+//                         "title": "Πάμε"
+//                     }
+//                 ]
+//             }
+//         }
+//     }
+//     return msg
+// }
+
+const tipsForGame = () => {
+    const msg = {
         "attachment": {
             "type": "template",
             "payload": {
                 "template_type": "button",
-                "text": "Γεια 👋\nΑυτό είναι ένα Trivial game, δοκίμασε τις γνώσεις σου σε διαφορετικές κατηγορίες και επίδεδο δυσκολίας και με κάθε σώστη απάντηση και αύξησε τη βαθμολογία σου.",
+                "text": `Έχεις ${roundCount} γύρους.\nΜε κάθε σωστή απάντηση κερδίζεις 1 πόντο και ${points} στη Γενική Βαθμολογία.\n\nΧρησιμοποιείσε το Menu κάτω αριστερά για να Ξεκινήσεις/Σταματήσεις το παιχνίδι και να δείς την βαθμολογία σου`,
                 "buttons": [
                     {
                         "type": "postback",
@@ -528,17 +550,17 @@ function shuffleArray(array) {
 }
 
 const scoreDisplay = async (psid) => {
-    let score = await getUserScoreDB(psid);
+    let data = await getUserDataDB(psid);
     let msg = {
-        "text": `Σκορ: ${score}`
+        "text": `Σκορ: ${data.score}\nΓενική πόντοι: ${data.points}`
     }
     return msg
 }
 
 const correctAsnwerDisplay = async (psid) => {
-    let score = await getUserScoreDB(psid);
+    let data = await getUserDataDB(psid);
     let msg = {
-        "text": `Σωστό! ✅\nΣκορ: ${score}`
+        "text": `Σωστό! ✅\nΣκορ: ${data.score} ${data.score === 1 ? 'πόντο' : 'πόντοι'} σε ${data.roundCount} ${data.roundCount === 1 ? 'γύρο' : 'γύρους'}`
     }
     return msg
 }
@@ -679,11 +701,12 @@ async function handlePostback(sender_psid, received_postback) {
     let response;
     let payload = received_postback.payload;
 
-    // console.log(payload);
     if (received_postback.payload) {
         switch (payload) {
             case 'getstarted':
-                response = await wellcomeGetStart(sender_psid);
+                response = await wellcomeGetStart();
+                await callSendAPI(sender_psid, response);
+                response = await tipsForGame();
                 break;
             case 'start':
                 await addNewUserDB(sender_psid);
@@ -695,26 +718,32 @@ async function handlePostback(sender_psid, received_postback) {
             case 'no':
                 response = await displayExit();
                 break;
+            case 'score':
+                response = await scoreDisplay(sender_psid);
+                await callSendAPI(sender_psid, response);
+                break;
         }
     }
 
     let data = await getUserDataDB(sender_psid);
 
-    if (data != null) {
-        if (data.currentQuestion.length != 0) {
-            await chechAnswer(sender_psid, received_postback.title, data.correctAnswer, data.currentQuestion);
-            if (data.roundCount != 10) {
-                response = await displayQuestions(sender_psid);
-            } else {
-                response = await displayFinalScore(sender_psid);
+    if (payload != "score") {
+        if (data != null) {
+            if (data.currentQuestion.length != 0) {
+                await chechAnswer(sender_psid, received_postback.title, data.correctAnswer, data.currentQuestion);
+                if (data.roundCount != roundCount) {
+                    response = await displayQuestions(sender_psid);
+                } else {
+                    response = await displayFinalScore(sender_psid);
+                }
             }
         }
-    }
-    await callSendAPI(sender_psid, response);
-
-    if (data.roundCount === 10) {
-        response = stopRound(sender_psid);
         await callSendAPI(sender_psid, response);
+
+        if (data.roundCount === roundCount) {
+            response = stopRound(sender_psid);
+            await callSendAPI(sender_psid, response);
+        }
     }
 }
 
