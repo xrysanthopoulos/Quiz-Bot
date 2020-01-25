@@ -1,7 +1,7 @@
 # Quiz Bot
 This is a trivia game on Facebook Messenger.
 
-Can you play the Quiz Bot here. [![Quiz Bot](https://img.icons8.com/color/28/000000/facebook-messenger.png)](m.me/110360093843185)
+Can you play the Quiz Bot here. [![Quiz Bot](https://img.icons8.com/color/28/000000/facebook-messenger.png)](https://m.me/110360093843185)
 
 ***At this time the questions are in Greek language.**
 
