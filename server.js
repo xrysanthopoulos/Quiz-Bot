@@ -10,7 +10,7 @@ const VERIFY_TOKEN = process.env.VERIFY_TOKEN;
 const MONGODB_URI = process.env.MONGODB_URI;
 const DB_NAME = process.env.DB_NAME;
 
-const roundCount = 10;
+const questCount = 10;
 const points = 5;
 
 const app = express().use(bodyParser.json());
@@ -37,12 +37,12 @@ async function setupPersistentMenu(res) {
                 },
                 {
                     "type": "postback",
-                    "title": "Βγές άπο το παιχνίδι ❌",
+                    "title": "Βγες από το παιχνίδι ❌",
                     "payload": "cancel"
                 },
                 {
                     "type": "postback",
-                    "title": "Γενική βαθμολογία και score 🏆",
+                    "title": "Γενικοί βαθμολογία και score 🏆",
                     "payload": "score"
                 }
             ]
@@ -74,7 +74,7 @@ async function setupGreetingText(res) {
         "greeting": [
             {
                 "locale": "default",
-                "text": "Hello {{user_full_name}} 👋 !! This is the Quiz Bot a trivia game. Press 'Get Started' to start the game."
+                "text": "Hello {{user_full_name}} 👋 !! This is the Quiz Bot, a trivia game. Press 'Get Started' to start the game."
             }
         ]
     };
@@ -179,7 +179,7 @@ async function getQuestionsForDB(psid) {
         let dataQuestions = await getQuest();
         const colUser = db.collection('users');
         let userFind = { user: psid };
-        let updateValues = { $set: { currentQuestion: dataQuestions.id, roundCount: dataUser.roundCount + 1, correctAnswer: dataQuestions.correct_answer } };
+        let updateValues = { $set: { currentQuestion: dataQuestions.id, questCount: dataUser.questCount + 1, correctAnswer: dataQuestions.correct_answer } };
         await colUser.findOneAndUpdate(userFind, updateValues);
 
         return dataQuestions
@@ -233,7 +233,7 @@ async function addNewUserDB(psid) {
         let data = await getPersonDetails()
 
         let userFind = { user: psid };
-        let user = { user: psid, personalDetails: [data], difficult: null, category: null, points: 0, score: 0, roundCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null };
+        let user = { user: psid, personalDetails: [data], difficult: null, category: null, points: 0, score: 0, questCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null };
 
         data = await col.findOne(userFind).then(result => {
             if (result === null || result === undefined) {
@@ -339,7 +339,7 @@ async function startNewRoundUserDB(psid) {
 
         let userFind = { user: psid };
 
-        let updateValues = { $set: { difficult: null, category: null, score: 0, roundCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null } };
+        let updateValues = { $set: { difficult: null, category: null, score: 0, questCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null } };
 
         await col.findOneAndUpdate(userFind, updateValues);
 
@@ -408,7 +408,7 @@ app.post('/webhook', (req, res) => {
 
 const wellcomeGetStart = () => {
     const msg = {
-        "text": `Γεια 👋\nΤο Quiz bot είναι ένα trivial game, δοκίμασε τις γνώσεις σου σε διαφορετικές κατηγορίες και επίπεδο δυσκολίας και με κάθε σωστή απάντηση και αύξησε τη βαθμολογία σου.`
+        "text": `Γεια 👋\nΤο Quiz bot είναι ένα trivial game, δοκίμασε τις γνώσεις σου σε διαφορετικές κατηγορίες και επίπεδο δυσκολίας και με κάθε σωστή απάντηση αύξησε τη βαθμολογία σου.`
     }
     return msg
 }
@@ -439,7 +439,7 @@ const tipsForGame = () => {
             "type": "template",
             "payload": {
                 "template_type": "button",
-                "text": `Έχεις ${roundCount} γύρους.\nΜε κάθε σωστή απάντηση κερδίζεις 1 πόντο και ${points} στη Γενική Βαθμολογία.\n\nΧρησιμοποιήσε το Menu κάτω αριστερά για να Ξεκινήσεις/Σταματήσεις το παιχνίδι και να δεις την βαθμολογία σου`,
+                "text": `Έχεις ${questCount} ερωτήσεις.\nΜε κάθε σωστή απάντηση κερδίζεις 1 πόντο και ${points} στη Γενική Βαθμολογία.\n\nΧρησιμοποίσε το Menu κάτω αριστερά για να "Ξεκινήσεις" ή να "Σταματήσεις" το παιχνίδι και να δεις την βαθμολογία σου`,
                 "buttons": [
                     {
                         "type": "postback",
@@ -483,17 +483,17 @@ const chooseDifficult = () => {
         "text": "Δίαλεξε επίπεδο:",
         "quick_replies": [
             {
-                "title": "Τυχαία",
+                "title": "Τυχαίο",
                 "content_type": "text",
                 "payload": "random"
             },
             {
-                "title": "Έυκολο",
+                "title": "Εύκολο",
                 "content_type": "text",
                 "payload": "easy"
             },
             {
-                "title": "Μεσαίο",
+                "title": "Μέτριο",
                 "content_type": "text",
                 "payload": "medium"
             },
@@ -509,10 +509,10 @@ const chooseDifficult = () => {
 
 const chooseCategory = () => {
     let msg = {
-        "text": "Δίαλεξε κατηγορία:",
+        "text": "Διάλεξε κατηγορία:",
         "quick_replies": [
             {
-                "title": "Τυχαία",
+                "title": "Τυχαίο",
                 "content_type": "text",
                 "payload": "random"
             },
@@ -522,7 +522,7 @@ const chooseCategory = () => {
                 "payload": "sports"
             },
             {
-                "title": "Ίστορια",
+                "title": "Ιστορία",
                 "content_type": "text",
                 "payload": "history"
             },
@@ -532,7 +532,7 @@ const chooseCategory = () => {
                 "payload": "geography"
             },
             {
-                "title": "Πολυτισμός",
+                "title": "Πολιτισμός",
                 "content_type": "text",
                 "payload": "culture"
             }
@@ -560,7 +560,7 @@ const scoreDisplay = async (psid) => {
 const correctAsnwerDisplay = async (psid) => {
     let data = await getUserDataDB(psid);
     let msg = {
-        "text": `Σωστό! ✅\nΣκορ: ${data.score} ${data.score === 1 ? 'πόντο' : 'πόντοι'} σε ${data.roundCount} ${data.roundCount === 1 ? 'γύρο' : 'γύρους'}`
+        "text": `Σωστό! ✅\nΣκορ: ${data.score} ${data.score === 1 ? 'πόντος' : 'πόντοι'} σε ${data.questCount} ${data.questCount === 1 ? 'ερώτηση' : 'ερωτήσεις'}`
     }
     return msg
 }
@@ -731,7 +731,7 @@ async function handlePostback(sender_psid, received_postback) {
         if (data != null) {
             if (data.currentQuestion.length != 0) {
                 await chechAnswer(sender_psid, received_postback.title, data.correctAnswer, data.currentQuestion);
-                if (data.roundCount != roundCount) {
+                if (data.questCount != questCount) {
                     response = await displayQuestions(sender_psid);
                 } else {
                     response = await displayFinalScore(sender_psid);
@@ -740,7 +740,7 @@ async function handlePostback(sender_psid, received_postback) {
         }
         await callSendAPI(sender_psid, response);
 
-        if (data.roundCount === roundCount) {
+        if (data.questCount === questCount) {
             response = stopRound(sender_psid);
             await callSendAPI(sender_psid, response);
         }
