@@ -42,7 +42,7 @@ async function setupPersistentMenu(res) {
                 },
                 {
                     "type": "postback",
-                    "title": "Γενικοί βαθμολογία και score 🏆",
+                    "title": "Γενική βαθμολογία και score 🏆",
                     "payload": "score"
                 }
             ]
@@ -552,7 +552,7 @@ function shuffleArray(array) {
 const scoreDisplay = async (psid) => {
     let data = await getUserDataDB(psid);
     let msg = {
-        "text": `Σκορ: ${data.score}\nΓενική πόντοι: ${data.points}`
+        "text": `Σκορ: ${data.score}\nΓενικοί πόντοι: ${data.points}`
     }
     return msg
 }
