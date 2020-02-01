@@ -23,6 +23,8 @@ app.get('/setup', async function (req, res) {
     await setupGreetingText(res);
 });
 
+/// Set up Messenger settings for "Persistent Menu", "Greeting Text", "Get Started Button".
+
 async function setupPersistentMenu(res) {
     var messageData =
     {
@@ -122,7 +124,10 @@ async function setupGetStartedButton(res) {
         });
 }
 
-async function getQuestionsForDB(psid) {
+/// Database actions
+
+// Set random with query questions in user collection in "moreCategoryQuestion" field.
+async function setQuestionsUserDB(psid) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
         useUnifiedTopology: true
@@ -131,58 +136,35 @@ async function getQuestionsForDB(psid) {
     try {
         await client.connect();
         const db = client.db(DB_NAME);
-        const col = db.collection('questions');
+        const colQuest = db.collection('questions');
 
-        const getQuest = async () => {
-            const colUser = db.collection('users');
-            let userFind = { user: psid };
-            let dataUser = await colUser.findOne(userFind);
-            let query;
-            let dataQuest;
-            if (dataUser.difficult === "random" && dataUser.category === "random") {
-                let n = await col.countDocuments();
-                let r = Math.floor(Math.random() * n) + 1;
-                dataQuest = await col.find().limit(1).skip(r).toArray();
-            } else {
-                if (dataUser.difficult === "random") {
-                    query = { category: dataUser.category }
-                } else if (dataUser.category === "random") {
-                    query = { difficulty: dataUser.difficult }
-                } else {
-                    query = { difficulty: dataUser.difficult, category: dataUser.category }
-                }
-                dataQuest = await col.find(query).toArray();
-            }
-
-            if (dataUser.pastQuestions.length === 0) {
-                let updateValues = { $set: { moreCategoryQuestion: dataQuest } };
-                await colUser.findOneAndUpdate(userFind, updateValues);
-            } else if (dataUser.moreCategoryQuestion.length === 0) {
-                let updateValues = { $set: { moreCategoryQuestion: dataQuest, pastQuestions: [] } };
-                await colUser.findOneAndUpdate(userFind, updateValues);
-            }
-            let question = await checkQuest();
-            return question
-        }
-
-        const checkQuest = async () => {
-            const colUser = db.collection('users');
-            let userFind = { user: psid };
-            dataUser = await colUser.findOne(userFind);
-            let r = Math.floor(Math.random() * dataUser.moreCategoryQuestion.length);
-            let updateValues = { $pull: { moreCategoryQuestion: dataUser.moreCategoryQuestion[r] } };
-            await colUser.findOneAndUpdate(userFind, updateValues);
-            dataUser2 = await colUser.findOne(userFind);
-            return dataUser.moreCategoryQuestion[r]
-        }
-
-        let dataQuestions = await getQuest();
         const colUser = db.collection('users');
         let userFind = { user: psid };
-        let updateValues = { $set: { currentQuestion: dataQuestions.id, questCount: dataUser.questCount + 1, correctAnswer: dataQuestions.correct_answer } };
-        await colUser.findOneAndUpdate(userFind, updateValues);
+        let dataUser = await colUser.findOne(userFind);
+        let query;
+        let dataQuest;
+        // in case random difficult/category make random query
+        if (dataUser.difficult === "random" && dataUser.category === "random") {
+            dataQuest = await colQuest.aggregate([{ $sample: { size: 10 } }]).toArray();
+        } else {
+            // make query from User details
+            if (dataUser.difficult === "random") {
+                query = { category: dataUser.category }
+            } else if (dataUser.category === "random") {
+                query = { difficulty: dataUser.difficult }
+            } else {
+                query = { difficulty: dataUser.difficult, category: dataUser.category }
+            }
+            dataQuest = await colQuest.aggregate([{ $match: query }, { $sample: { size: 10 } }]).toArray();
+        }
 
-        return dataQuestions
+        if (dataUser.pastQuestions.length === 0) {
+            let updateValues = { $set: { moreCategoryQuestion: dataQuest } };
+            await colUser.findOneAndUpdate(userFind, updateValues);
+        } else if (dataUser.moreCategoryQuestion.length === 0) {
+            let updateValues = { $set: { moreCategoryQuestion: dataQuest, pastQuestions: [] } };
+            await colUser.findOneAndUpdate(userFind, updateValues);
+        }
 
     } catch (err) {
         console.log(err.stack);
@@ -190,6 +172,33 @@ async function getQuestionsForDB(psid) {
     client.close();
 };
 
+// Get data user from DB and return question for each question counter.
+async function getQuestioFromUserDB(psid, id) {
+    const client = new MongoClient(MONGODB_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+    });
+
+    try {
+        await client.connect();
+        const db = client.db(DB_NAME);
+        const colUser = db.collection('users');
+        let userFind = { user: psid };
+        let dataUser = await colUser.find(userFind).toArray();
+        
+        let currentQuestion = dataUser[0].moreCategoryQuestion[dataUser[0].questCount]
+        let updateValues = { $set: { currentQuestion: currentQuestion.id, questCount: dataUser[0].questCount + 1, correctAnswer: currentQuestion.correct_answer } };
+        await colUser.findOneAndUpdate(userFind, updateValues);
+
+        return currentQuestion
+
+    } catch (err) {
+        console.log(err.stack);
+    }
+    client.close();
+};
+
+// Set past question in user collections *** not use currently
 async function setPastQuestionUserDB(psid, id) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -210,6 +219,7 @@ async function setPastQuestionUserDB(psid, id) {
     client.close();
 };
 
+// Initialize a new User in DB
 async function addNewUserDB(psid) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -222,12 +232,12 @@ async function addNewUserDB(psid) {
         const col = db.collection('users');
 
         const getPersonDetails = async () => {
-                return axios.get("https://graph.facebook.com/"+psid+"?fields=first_name,last_name,profile_pic&access_token="+PAGE_ACCESS_TOKEN)
+            return axios.get("https://graph.facebook.com/" + psid + "?fields=first_name,last_name,profile_pic&access_token=" + PAGE_ACCESS_TOKEN)
                 .then((response) => {
-                  return response.data;
+                    return response.data;
                 })
                 .catch((error) => {
-                  console.log(error);
+                    console.log(error);
                 });
         }
         let data = await getPersonDetails()
@@ -247,6 +257,7 @@ async function addNewUserDB(psid) {
     client.close();
 }
 
+//Get data User from DB
 async function getUserDataDB(psid) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -256,11 +267,11 @@ async function getUserDataDB(psid) {
     try {
         await client.connect();
         const db = client.db(DB_NAME);
-        const col = db.collection('users');
+        const colUser = db.collection('users');
 
         let userFind = { user: psid };
 
-        let data = await col.findOne(userFind);
+        let data = await colUser.findOne(userFind);
         return data
 
     } catch (err) {
@@ -269,6 +280,7 @@ async function getUserDataDB(psid) {
     client.close();
 }
 
+// Update User details difficult/category.
 async function updateUserDetailsDB(psid, payload) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -278,23 +290,23 @@ async function updateUserDetailsDB(psid, payload) {
     try {
         await client.connect();
         const db = client.db(DB_NAME);
-        const col = db.collection('users');
+        const colUser = db.collection('users');
 
         let userFind = { user: psid };
         let updateValues;
 
-        let data = await col.findOne(userFind);
+        let data = await colUser.findOne(userFind);
         if (data.difficult === null) {
             updateValues = { $set: { difficult: payload } };
-            await col.findOneAndUpdate(userFind, updateValues);
+            await colUser.findOneAndUpdate(userFind, updateValues);
             return false
         } else if (data.category === null) {
             updateValues = { $set: { category: payload } };
-            await col.findOneAndUpdate(userFind, updateValues);
+            await colUser.findOneAndUpdate(userFind, updateValues);
             return true
         }
 
-        data = await col.findOne(userFind);
+        data = await colUser.findOne(userFind);
 
     } catch (err) {
         console.log(err.stack);
@@ -302,6 +314,7 @@ async function updateUserDetailsDB(psid, payload) {
     client.close();
 }
 
+// Update User score in DB.
 async function updateUserScoreDB(psid) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -311,21 +324,21 @@ async function updateUserScoreDB(psid) {
     try {
         await client.connect();
         const db = client.db(DB_NAME);
-        const col = db.collection('users');
+        const colUser = db.collection('users');
 
         let userFind = { user: psid };
 
-        let data = await col.findOne(userFind);
+        let data = await colUser.findOne(userFind);
         let updateValues = { $set: { score: data.score + 1, points: data.points + points } };
 
-        await col.findOneAndUpdate(userFind, updateValues);
+        await colUser.findOneAndUpdate(userFind, updateValues);
 
     } catch (err) {
         console.log(err.stack);
     }
     client.close();
 }
-
+// Initialize User fields in DB to start new round.
 async function startNewRoundUserDB(psid) {
     const client = new MongoClient(MONGODB_URI, {
         useNewUrlParser: true,
@@ -335,19 +348,21 @@ async function startNewRoundUserDB(psid) {
     try {
         await client.connect();
         const db = client.db(DB_NAME);
-        const col = db.collection('users');
+        const colUser = db.collection('users');
 
         let userFind = { user: psid };
 
         let updateValues = { $set: { difficult: null, category: null, score: 0, questCount: 0, pastQuestions: [], currentQuestion: [], moreCategoryQuestion: [], correctAnswer: null } };
 
-        await col.findOneAndUpdate(userFind, updateValues);
+        await colUser.findOneAndUpdate(userFind, updateValues);
 
     } catch (err) {
         console.log(err.stack);
     }
     client.close();
 }
+
+/// Facebook Messenger webhook 
 
 app.get('/webhook', (req, res) => {
 
@@ -405,6 +420,8 @@ app.post('/webhook', (req, res) => {
     }
 
 });
+
+/// Display functions
 
 const wellcomeGetStart = () => {
     const msg = {
@@ -535,6 +552,11 @@ const chooseCategory = () => {
                 "title": "Πολιτισμός",
                 "content_type": "text",
                 "payload": "culture"
+            },
+            {
+                "title": "Περιβάλλον",
+                "content_type": "text",
+                "payload": "environment"
             }
         ]
     }
@@ -596,7 +618,8 @@ const getAnswers = (category, incorrectAnswers, correctAnswer) => {
 }
 
 const displayQuestions = async (psid) => {
-    data = await getQuestionsForDB(psid);
+    data = await getQuestioFromUserDB(psid);
+
     const msg = {
         "attachment": {
             "type": "template",
@@ -674,6 +697,7 @@ async function handleMessage(sender_psid, received_message) {
         let payload = received_message.quick_reply.payload;
 
         let status = await updateUserDetailsDB(sender_psid, payload);
+        await setQuestionsUserDB(sender_psid);
 
         if (!status) {
             response = await chooseCategory();
@@ -689,7 +713,7 @@ const chechAnswer = async (sender_psid, userAnswer, correctAnswer, id) => {
     let response;
     if (userAnswer === correctAnswer) {
         await updateUserScoreDB(sender_psid);
-        await setPastQuestionUserDB(sender_psid, id);
+        // await setPastQuestionUserDB(sender_psid, id);
         response = await correctAsnwerDisplay(sender_psid);
     } else if (userAnswer != correctAnswer) {
         response = incorrectAnswersDisplay();
