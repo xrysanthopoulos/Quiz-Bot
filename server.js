@@ -557,6 +557,16 @@ const chooseCategory = () => {
                 "title": "Περιβάλλον",
                 "content_type": "text",
                 "payload": "environment"
+            },
+            {
+                "title": "Επιστήμη",
+                "content_type": "text",
+                "payload": "science"
+            },
+            {
+                "title": "Γλώσσες",
+                "content_type": "text",
+                "payload": "language"
             }
         ]
     }
