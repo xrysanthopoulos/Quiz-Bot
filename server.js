@@ -558,11 +558,11 @@ const chooseCategory = () => {
                 "content_type": "text",
                 "payload": "environment"
             },
-            {
-                "title": "Επιστήμη",
-                "content_type": "text",
-                "payload": "science"
-            },
+//             {
+//                 "title": "Επιστήμη",
+//                 "content_type": "text",
+//                 "payload": "science"
+//             },
             {
                 "title": "Γλώσσες",
                 "content_type": "text",
